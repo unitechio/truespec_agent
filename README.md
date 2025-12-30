@@ -260,15 +260,3 @@ Copyright © 2024 Your Company. All rights reserved.
 ## 🤝 Support
 
 For support, please contact: support@unitechio.com
-
-## ✅ Security Review Checklist
-
-- [x] No hardcoded secrets
-- [x] mTLS authentication
-- [x] Certificate rotation
-- [x] Signature verification
-- [x] Minimal privileges
-- [x] Audit logging
-- [x] Clean uninstall
-- [x] Transparent operation
-# truespec_agent
