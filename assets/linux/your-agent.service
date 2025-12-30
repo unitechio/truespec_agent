@@ -1,0 +1,30 @@
+[Unit]
+Description=Enterprise Agent
+Documentation=https://docs.unitechio.com/agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=your-agent
+Group=your-agent
+ExecStart=/usr/local/bin/your-agent --config /etc/your-agent/config.json
+Restart=on-failure
+RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/your-agent /var/log/your-agent
+
+# Resource limits
+LimitNOFILE=65536
+MemoryMax=512M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,22 @@
+{
+  "org_id": "PLACEHOLDER_ORG_ID",
+  "install_token": "PLACEHOLDER_TOKEN",
+  "api_base_url": "https://api.yourcompany.com",
+  "collection_interval": "60s",
+  "batch_size": 100,
+  "max_buffer_size": 104857600,
+  "buffer_dir": "C:\\ProgramData\\YourCompany\\Agent\\buffer",
+  "heartbeat_interval": "5m",
+  "log_level": "info",
+  "log_file": "C:\\ProgramData\\YourCompany\\Agent\\logs\\agent.log",
+  "log_max_size_mb": 100,
+  "log_max_backups": 5,
+  "update_enabled": true,
+  "update_check_interval": "1h",
+  "tls": {
+    "cert_file": "C:\\ProgramData\\YourCompany\\Agent\\certs\\agent.crt",
+    "key_file": "C:\\ProgramData\\YourCompany\\Agent\\certs\\agent.key",
+    "ca_file": "C:\\ProgramData\\YourCompany\\Agent\\certs\\ca.crt",
+    "insecure_skip_verify": false
+  }
+}

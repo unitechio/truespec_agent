@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <?define ProductVersion="1.0.0" ?>
+  <?define ProductName="Enterprise Agent" ?>
+  <?define Manufacturer="Your Company" ?>
+  <?define UpgradeCode="550E8400-E29B-41D4-A716-446655440000" ?>
+  
+  <Product Id="*" 
+           Name="$(var.ProductName)" 
+           Language="1033" 
+           Version="$(var.ProductVersion)" 
+           Manufacturer="$(var.Manufacturer)" 
+           UpgradeCode="$(var.UpgradeCode)">
+    
+    <Package InstallerVersion="200" 
+             Compressed="yes" 
+             InstallScope="perMachine" 
+             Description="$(var.ProductName) Installer"
+             Comments="Enterprise endpoint monitoring agent" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Properties -->
+    <Property Id="ARPPRODUCTICON" Value="AgentIcon.exe" />
+    <Property Id="ARPURLINFOABOUT" Value="https://yourcompany.com/agent" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+    <Property Id="ARPNOREPAIR" Value="1" />
+    
+    <!-- Custom properties for configuration -->
+    <Property Id="ORG_ID" Secure="yes" />
+    <Property Id="INSTALL_TOKEN" Secure="yes" />
+    <Property Id="API_BASE_URL" Value="https://api.yourcompany.com" />
+    <Property Id="LOG_LEVEL" Value="info" />
+
+    <!-- Feature -->
+    <Feature Id="ProductFeature" Title="Enterprise Agent" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentGroupRef Id="ConfigComponents" />
+      <ComponentRef Id="ServiceComponent" />
+    </Feature>
+
+    <!-- Custom actions -->
+    <CustomAction Id="InstallService" 
+                  FileKey="AgentExe" 
+                  ExeCommand='install --org-id "[ORG_ID]" --token "[INSTALL_TOKEN]"' 
+                  Execute="deferred" 
+                  Impersonate="no" 
+                  Return="check" />
+    
+    <CustomAction Id="UninstallService" 
+                  FileKey="AgentExe" 
+                  ExeCommand="uninstall" 
+                  Execute="deferred" 
+                  Impersonate="no" 
+                  Return="ignore" />
+    
+    <CustomAction Id="StartService" 
+                  FileKey="AgentExe" 
+                  ExeCommand="start" 
+                  Execute="deferred" 
+                  Impersonate="no" 
+                  Return="ignore" />
+    
+    <CustomAction Id="StopService" 
+                  FileKey="AgentExe" 
+                  ExeCommand="stop" 
+                  Execute="deferred" 
+                  Impersonate="no" 
+                  Return="ignore" />
+
+    <!-- Install sequence -->
+    <InstallExecuteSequence>
+      <Custom Action="StopService" Before="InstallValidate">Installed AND NOT UPGRADINGPRODUCTCODE</Custom>
+      <Custom Action="UninstallService" Before="RemoveFiles">Installed AND NOT UPGRADINGPRODUCTCODE</Custom>
+      <Custom Action="InstallService" After="InstallFiles">NOT Installed</Custom>
+      <Custom Action="StartService" After="InstallService">NOT Installed</Custom>
+    </InstallExecuteSequence>
+
+    <!-- UI -->
+    <UIRef Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+    <WixVariable Id="WixUIBannerBmp" Value="banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="dialog.bmp" />
+  </Product>
+
+  <!-- Directory structure -->
+  <Fragment>
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="CompanyFolder" Name="YourCompany">
+          <Directory Id="INSTALLFOLDER" Name="Agent" />
+        </Directory>
+      </Directory>
+      
+      <Directory Id="CommonAppDataFolder">
+        <Directory Id="CompanyDataFolder" Name="YourCompany">
+          <Directory Id="DATAFOLDER" Name="Agent">
+            <Directory Id="CERTSFOLDER" Name="certs" />
+            <Directory Id="BUFFERFOLDER" Name="buffer" />
+            <Directory Id="LOGSFOLDER" Name="logs" />
+          </Directory>
+        </Directory>
+      </Directory>
+    </Directory>
+  </Fragment>
+
+  <!-- Components -->
+  <Fragment>
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Component Id="AgentExecutable" Guid="*">
+        <File Id="AgentExe" 
+              Source="..\..\build\agent-windows-amd64.exe" 
+              KeyPath="yes" 
+              Name="agent.exe" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="ConfigComponents" Directory="DATAFOLDER">
+      <Component Id="ConfigFile" Guid="*">
+        <File Id="ConfigJson" 
+              Source="config.template.json" 
+              KeyPath="yes" 
+              Name="config.json" />
+        <util:XmlFile Id="SetOrgID" 
+                      Action="setValue" 
+                      ElementPath="/config/org_id" 
+                      Value="[ORG_ID]" 
+                      File="[DATAFOLDER]config.json" />
+        <util:XmlFile Id="SetToken" 
+                      Action="setValue" 
+                      ElementPath="/config/install_token" 
+                      Value="[INSTALL_TOKEN]" 
+                      File="[DATAFOLDER]config.json" />
+      </Component>
+      
+      <Component Id="DataFolders" Guid="*">
+        <CreateFolder Directory="CERTSFOLDER" />
+        <CreateFolder Directory="BUFFERFOLDER" />
+        <CreateFolder Directory="LOGSFOLDER" />
+        <RemoveFolder Id="RemoveCerts" Directory="CERTSFOLDER" On="uninstall" />
+        <RemoveFolder Id="RemoveBuffer" Directory="BUFFERFOLDER" On="uninstall" />
+        <RemoveFolder Id="RemoveLogs" Directory="LOGSFOLDER" On="uninstall" />
+        <RegistryValue Root="HKLM" 
+                       Key="Software\YourCompany\Agent" 
+                       Name="DataFolder" 
+                       Type="string" 
+                       Value="[DATAFOLDER]" 
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <Component Id="ServiceComponent" Directory="INSTALLFOLDER" Guid="*">
+      <RegistryValue Root="HKLM" 
+                     Key="Software\YourCompany\Agent" 
+                     Name="Version" 
+                     Type="string" 
+                     Value="$(var.ProductVersion)" 
+                     KeyPath="yes" />
+    </Component>
+  </Fragment>
+</Wix>

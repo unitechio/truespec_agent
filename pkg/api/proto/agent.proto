@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package agent;
+
+option go_package = "github.com/unitechio/agent/pkg/api/proto";
+
+import "google/protobuf/timestamp.proto";
+
+// AgentService defines the gRPC service for agent communication
+service AgentService {
+  // Bootstrap registers a new agent
+  rpc Bootstrap(BootstrapRequest) returns (BootstrapResponse);
+  
+  // GetPolicy retrieves the current policy
+  rpc GetPolicy(PolicyRequest) returns (PolicyResponse);
+  
+  // SendTelemetry sends collected telemetry data
+  rpc SendTelemetry(TelemetryRequest) returns (TelemetryResponse);
+  
+  // Heartbeat sends health status
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  
+  // CheckUpdate checks for available updates
+  rpc CheckUpdate(UpdateRequest) returns (UpdateResponse);
+}
+
+// BootstrapRequest contains agent registration data
+message BootstrapRequest {
+  string org_id = 1;
+  string install_token = 2;
+  string hostname = 3;
+  string os = 4;
+  string arch = 5;
+  string agent_version = 6;
+}
+
+// BootstrapResponse contains agent identity and certificates
+message BootstrapResponse {
+  string agent_id = 1;
+  string certificate = 2;  // PEM-encoded X.509 certificate
+  string private_key = 3;  // PEM-encoded private key
+  string ca_cert = 4;      // PEM-encoded CA certificate
+  bytes policy = 5;        // Initial policy (JSON)
+}
+
+// PolicyRequest requests the current policy
+message PolicyRequest {
+  string agent_id = 1;
+}
+
+// PolicyResponse contains the policy configuration
+message PolicyResponse {
+  string version = 1;
+  google.protobuf.Timestamp updated_at = 2;
+  bytes policy_json = 3;
+}
+
+// TelemetryRequest contains collected telemetry data
+message TelemetryRequest {
+  string agent_id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  repeated TelemetryData data = 3;
+}
+
+// TelemetryData represents a single telemetry data point
+message TelemetryData {
+  string collector = 1;
+  google.protobuf.Timestamp collected_at = 2;
+  bytes data_json = 3;  // JSON-encoded collector data
+}
+
+// TelemetryResponse acknowledges telemetry receipt
+message TelemetryResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// HeartbeatRequest contains agent health status
+message HeartbeatRequest {
+  string agent_id = 1;
+  string version = 2;
+  string status = 3;  // healthy, degraded, unhealthy
+  int64 uptime_seconds = 4;
+  double memory_usage_mb = 5;
+  int32 goroutines = 6;
+  repeated string errors = 7;
+}
+
+// HeartbeatResponse acknowledges heartbeat
+message HeartbeatResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// UpdateRequest checks for available updates
+message UpdateRequest {
+  string agent_id = 1;
+  string current_version = 2;
+  string os = 3;
+  string arch = 4;
+  string channel = 5;  // stable, beta, dev
+}
+
+// UpdateResponse contains update metadata
+message UpdateResponse {
+  bool update_available = 1;
+  string version = 2;
+  google.protobuf.Timestamp release_date = 3;
+  string download_url = 4;
+  string checksum = 5;  // SHA256
+  string signature = 6;  // Base64-encoded signature
+  string changelog = 7;
+  bool mandatory = 8;
+}

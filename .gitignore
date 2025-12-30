@@ -1,0 +1,63 @@
+# .gitignore for Enterprise Agent
+
+# Binaries
+build/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+!cmd/
+agent
+agent-*
+
+# Test binaries
+*.test
+*.out
+
+# Go workspace file
+go.work
+
+# Dependencies
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Certificates (NEVER commit)
+*.crt
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Configuration (may contain secrets)
+config.json
+*.env
+
+# Logs
+*.log
+logs/
+
+# Buffer data
+buffer/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+*.msi
+*.deb
+*.rpm
+*.pkg
+installers/build/
