@@ -10,15 +10,14 @@ import (
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/net"
+	"github.com/unitechio/agent/internal/collectors/processes"
 )
 
-// Collector is the interface that all data collectors must implement
 type Collector interface {
 	Name() string
 	Collect(ctx context.Context) (interface{}, error)
 }
 
-// SystemCollector gathers OS and system information
 type SystemCollector struct{}
 
 func (c *SystemCollector) Name() string {
@@ -46,7 +45,6 @@ func (c *SystemCollector) Collect(ctx context.Context) (interface{}, error) {
 	}, nil
 }
 
-// CPUCollector gathers CPU information and usage
 type CPUCollector struct{}
 
 func (c *CPUCollector) Name() string {
@@ -54,7 +52,6 @@ func (c *CPUCollector) Name() string {
 }
 
 func (c *CPUCollector) Collect(ctx context.Context) (interface{}, error) {
-	// Get CPU info
 	cpuInfo, err := cpu.Info()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CPU info: %w", err)
@@ -85,7 +82,6 @@ func (c *CPUCollector) Collect(ctx context.Context) (interface{}, error) {
 	return result, nil
 }
 
-// MemoryCollector gathers memory information
 type MemoryCollector struct{}
 
 func (c *MemoryCollector) Name() string {
@@ -109,7 +105,6 @@ func (c *MemoryCollector) Collect(ctx context.Context) (interface{}, error) {
 	}, nil
 }
 
-// DiskCollector gathers disk information
 type DiskCollector struct{}
 
 func (c *DiskCollector) Name() string {
@@ -126,7 +121,6 @@ func (c *DiskCollector) Collect(ctx context.Context) (interface{}, error) {
 	for _, partition := range partitions {
 		usage, err := disk.Usage(partition.Mountpoint)
 		if err != nil {
-			// Skip partitions we can't access
 			continue
 		}
 
@@ -146,7 +140,6 @@ func (c *DiskCollector) Collect(ctx context.Context) (interface{}, error) {
 	}, nil
 }
 
-// NetworkCollector gathers network interface information
 type NetworkCollector struct {
 	CollectMAC bool // Policy-controlled: whether to collect MAC addresses
 }
@@ -189,13 +182,35 @@ func (c *NetworkCollector) Collect(ctx context.Context) (interface{}, error) {
 	}, nil
 }
 
-// NewDefaultCollectors returns a set of default collectors
+type ProcessesCollector struct{}
+
+func (p *ProcessesCollector) Name() string {
+	return "processes"
+}
+
+func (f *ProcessesCollector) Collect(ctx context.Context) (interface{}, error) {
+	return processes.ProcessesInfoCollect(ctx)
+}
+
+// type FileCollector struct {
+// }
+
+// func (f *FileCollector) Name() string {
+// 	return "file"
+// }
+
+// func (f *FileCollector) Collect(ctx context.Context, os string) (interface{}, error) {
+
+// }
+
 func NewDefaultCollectors() []Collector {
 	return []Collector{
 		&SystemCollector{},
 		&CPUCollector{},
 		&MemoryCollector{},
 		&DiskCollector{},
+		// &FileCollector{},
+		&ProcessesCollector{},
 		&NetworkCollector{CollectMAC: false}, // MAC collection disabled by default
 	}
 }

@@ -50,7 +50,6 @@ func TestCPUCollector(t *testing.T) {
 		t.Fatal("Expected map[string]interface{}")
 	}
 
-	// Check usage_percent exists and is valid
 	if usage, exists := result["usage_percent"]; exists {
 		if usageFloat, ok := usage.(float64); ok {
 			if usageFloat < 0 || usageFloat > 100 {

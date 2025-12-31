@@ -26,55 +26,54 @@ func InstallMacOSService(serviceName string) error {
 
 	// Create plist content
 	plistContent := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>%s</string>
-    
-    <key>ProgramArguments</key>
-    <array>
-        <string>%s</string>
-        <string>--config</string>
-        <string>/var/lib/your-agent/config.json</string>
-    </array>
-    
-    <key>RunAtLoad</key>
-    <true/>
-    
-    <key>KeepAlive</key>
-    <dict>
-        <key>SuccessfulExit</key>
-        <false/>
-    </dict>
-    
-    <key>StandardOutPath</key>
-    <string>/var/log/your-agent/stdout.log</string>
-    
-    <key>StandardErrorPath</key>
-    <string>/var/log/your-agent/stderr.log</string>
-    
-    <key>ThrottleInterval</key>
-    <integer>10</integer>
-    
-    <key>WorkingDirectory</key>
-    <string>/var/lib/your-agent</string>
-    
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>PATH</key>
-        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-    </dict>
-</dict>
-</plist>
-`, serviceName, exePath)
+	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+	<plist version="1.0">
+	<dict>
+	    <key>Label</key>
+	    <string>%s</string>
+
+	    <key>ProgramArguments</key>
+	    <array>
+	        <string>%s</string>
+	        <string>--config</string>
+	        <string>/var/lib/your-agent/config.json</string>
+	    </array>
+
+	    <key>RunAtLoad</key>
+	    <true/>
+
+	    <key>KeepAlive</key>
+	    <dict>
+	        <key>SuccessfulExit</key>
+	        <false/>
+	    </dict>
+
+	    <key>StandardOutPath</key>
+	    <string>/var/log/your-agent/stdout.log</string>
+
+	    <key>StandardErrorPath</key>
+	    <string>/var/log/your-agent/stderr.log</string>
+
+	    <key>ThrottleInterval</key>
+	    <integer>10</integer>
+
+	    <key>WorkingDirectory</key>
+	    <string>/var/lib/your-agent</string>
+
+	    <key>EnvironmentVariables</key>
+	    <dict>
+	        <key>PATH</key>
+	        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+	    </dict>
+	</dict>
+	</plist>
+	`, serviceName, exePath)
 
 	// Write plist file
 	if err := os.WriteFile(plistPath, []byte(plistContent), 0644); err != nil {
 		return fmt.Errorf("failed to write plist file: %w", err)
 	}
 
-	// Load service
 	if err := exec.Command("launchctl", "load", plistPath).Run(); err != nil {
 		return fmt.Errorf("failed to load service: %w", err)
 	}

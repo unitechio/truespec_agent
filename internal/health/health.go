@@ -13,7 +13,6 @@ import (
 	"github.com/unitechio/agent/internal/identity"
 )
 
-// Monitor handles health checks and heartbeats
 type Monitor struct {
 	cfg       *config.Config
 	identity  *identity.Manager
@@ -22,7 +21,6 @@ type Monitor struct {
 	startTime time.Time
 }
 
-// HealthStatus represents the agent's health
 type HealthStatus struct {
 	AgentID       string    `json:"agent_id"`
 	Version       string    `json:"version"`
@@ -34,7 +32,6 @@ type HealthStatus struct {
 	Errors        []string  `json:"errors,omitempty"`
 }
 
-// NewMonitor creates a new health monitor
 func NewMonitor(cfg *config.Config, identityMgr *identity.Manager, logger *log.Logger) *Monitor {
 	return &Monitor{
 		cfg:       cfg,
@@ -45,7 +42,6 @@ func NewMonitor(cfg *config.Config, identityMgr *identity.Manager, logger *log.L
 	}
 }
 
-// Start begins sending heartbeats
 func (m *Monitor) Start(ctx context.Context) {
 	m.logger.Println("Starting health monitor...")
 
@@ -71,12 +67,10 @@ func (m *Monitor) Start(ctx context.Context) {
 	}()
 }
 
-// Stop stops the health monitor
 func (m *Monitor) Stop() {
 	close(m.stopCh)
 }
 
-// sendHeartbeat sends a health status to the server
 func (m *Monitor) sendHeartbeat(ctx context.Context) {
 	status := m.getHealthStatus()
 
@@ -109,7 +103,6 @@ func (m *Monitor) sendHeartbeat(ctx context.Context) {
 	m.logger.Printf("Heartbeat sent successfully (status: %s)", status.Status)
 }
 
-// getHealthStatus collects current health metrics
 func (m *Monitor) getHealthStatus() *HealthStatus {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
@@ -129,7 +122,6 @@ func (m *Monitor) getHealthStatus() *HealthStatus {
 func (m *Monitor) CheckHealth() error {
 	status := m.getHealthStatus()
 
-	// Check memory usage (alert if > 500 MB)
 	if status.MemoryUsageMB > 500 {
 		return fmt.Errorf("high memory usage: %.2f MB", status.MemoryUsageMB)
 	}

@@ -8,9 +8,7 @@ import (
 	"time"
 )
 
-// Config represents the agent configuration
 type Config struct {
-	// Bootstrap state
 	Bootstrapped bool `json:"bootstrapped"`
 
 	// Agent identity
@@ -18,11 +16,8 @@ type Config struct {
 	AgentID      string `json:"agent_id,omitempty"`
 	InstallToken string `json:"install_token,omitempty"`
 
-	// API endpoints
-	APIBaseURL string `json:"api_base_url,omitempty"`
-
-	// TLS configuration
-	TLSConfig TLSConfig `json:"tls,omitempty"`
+	APIBaseURL string    `json:"api_base_url,omitempty"`
+	TLSConfig  TLSConfig `json:"tls,omitempty"`
 
 	// Data collection
 	CollectionInterval time.Duration `json:"collection_interval,omitempty"`
