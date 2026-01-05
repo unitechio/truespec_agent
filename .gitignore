@@ -48,7 +48,7 @@ config.json
 logs/
 
 # Buffer data
-buffer/
+#buffer/
 
 # Temporary files
 tmp/
