@@ -1,0 +1,172 @@
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"runtime"
+	"syscall"
+	"time"
+
+	"github.com/unitechio/agent/internal/config"
+	"github.com/unitechio/agent/internal/health"
+	"github.com/unitechio/agent/internal/identity"
+	"github.com/unitechio/agent/internal/policy"
+	"github.com/unitechio/agent/internal/scheduler"
+	"github.com/unitechio/agent/internal/service"
+)
+
+const (
+	agentVersion = "1.0.0"
+	agentName    = "enterprise-agent"
+)
+
+func main() {
+	// Parse command-line flags
+	var (
+		configPath = flag.String("config", getDefaultConfigPath(), "Path to configuration file")
+		bootstrap  = flag.Bool("bootstrap", false, "Run bootstrap process")
+		version    = flag.Bool("version", false, "Print version and exit")
+	)
+	flag.Parse()
+
+	if *version {
+		fmt.Printf("%s version %s\n", agentName, agentVersion)
+		os.Exit(0)
+	}
+
+	// Initialize logger
+	logger := log.New(os.Stdout, "[AGENT] ", log.LstdFlags|log.Lshortfile)
+	logger.Printf("Starting %s v%s", agentName, agentVersion)
+
+	// Load configuration
+	cfg, err := config.Load(*configPath)
+	if err != nil {
+		logger.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	// If running as OS service, delegate to service manager
+	if !*bootstrap {
+		isService, err := service.IsWindowsService()
+		if err != nil {
+			logger.Fatalf("Failed to check service status: %v", err)
+		}
+
+		if isService {
+			logger.Println("Running as Windows Service")
+			if err := service.RunAsService(cfg, logger); err != nil {
+				logger.Fatalf("Service failed: %v", err)
+			}
+			return
+		}
+	}
+
+	// Run agent
+	if err := run(cfg, logger, *bootstrap); err != nil {
+		logger.Fatalf("Agent failed: %v", err)
+	}
+}
+
+func run(cfg *config.Config, logger *log.Logger, doBootstrap bool) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		sig := <-sigChan
+		logger.Printf("Received signal %v, shutting down gracefully...", sig)
+		cancel()
+	}()
+
+	// Bootstrap identity if needed
+	identityMgr, err := identity.NewManager(cfg, logger)
+	if err != nil {
+		return fmt.Errorf("failed to create identity manager: %w", err)
+	}
+
+	if doBootstrap || !identityMgr.HasIdentity() {
+		logger.Println("Starting bootstrap process...")
+		if err := identityMgr.Bootstrap(ctx); err != nil {
+			return fmt.Errorf("bootstrap failed: %w", err)
+		}
+		logger.Println("Bootstrap completed successfully")
+	}
+
+	// Verify identity
+	if err := identityMgr.VerifyIdentity(); err != nil {
+		return fmt.Errorf("identity verification failed: %w", err)
+	}
+	logger.Printf("Agent identity verified: %s", identityMgr.GetAgentID())
+
+	// Initialize policy engine
+	policyEngine, err := policy.NewEngine(cfg, identityMgr, logger)
+	if err != nil {
+		return fmt.Errorf("failed to create policy engine: %w", err)
+	}
+
+	// Fetch initial policy
+	if err := policyEngine.Refresh(ctx); err != nil {
+		logger.Printf("Warning: failed to fetch initial policy, using defaults: %v", err)
+	}
+
+	// Initialize health monitor
+	healthMonitor := health.NewMonitor(cfg, identityMgr, logger)
+	healthMonitor.Start(ctx)
+
+	// Initialize scheduler
+	sched := scheduler.New(cfg, policyEngine, identityMgr, logger)
+	if err := sched.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start scheduler: %w", err)
+	}
+
+	logger.Println("Agent running. Press Ctrl+C to stop.")
+
+	// Main loop
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Println("Shutting down...")
+			sched.Stop()
+			healthMonitor.Stop()
+			logger.Println("Shutdown complete")
+			return nil
+
+		case <-ticker.C:
+			// Periodic policy refresh
+			if err := policyEngine.Refresh(ctx); err != nil {
+				logger.Printf("Failed to refresh policy: %v", err)
+			}
+		}
+	}
+}
+
+func getDefaultConfigPath() string {
+	if os.Getenv("AGENT_CONFIG") != "" {
+		return os.Getenv("AGENT_CONFIG")
+	}
+	// OS-specific defaults
+	switch {
+	case isWindows():
+		return `C:\ProgramData\unitechio\Agent\config.json`
+	case isDarwin():
+		return "/var/lib/your-agent/config.json"
+	default: // Linux
+		return "/etc/your-agent/config.json"
+	}
+}
+
+func isWindows() bool {
+	return os.PathSeparator == '\\' && os.PathListSeparator == ';'
+}
+
+func isDarwin() bool {
+	return runtime.GOOS == "darwin"
+}
