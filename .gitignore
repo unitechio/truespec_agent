@@ -7,7 +7,6 @@ build/
 *.dll
 *.so
 *.dylib
-!cmd/
 agent
 agent-*
 
