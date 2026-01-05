@@ -3,4 +3,7 @@
 run server mock:
     - go run tests/mock_server.go
 run agent:
+    export ORG_ID=test-org
+    export INSTALL_TOKEN=test-token-123
+    export BOOTSTRAP_URL=http://localhost:8080/api/v1/agents/bootstrap
     - ./build/agent.exe (dùng gitbash/linux terminal)
