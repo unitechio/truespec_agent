@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
 	"syscall"
 	"time"
 
+	"github.com/getlantern/systray"
 	"github.com/unitechio/agent/internal/config"
 	"github.com/unitechio/agent/internal/health"
 	"github.com/unitechio/agent/internal/identity"
@@ -31,29 +33,34 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Setup logger
 	logger := log.New(os.Stdout, "[AGENT] ", log.LstdFlags|log.Lshortfile)
 	logger.Printf("Starting enterprise-agent v%s", version)
 
-	// Create context with cancellation
+	// Context dùng chung cho agent
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
-	// Setup signal handling
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	// Start agent ở background
 	go func() {
-		sig := <-sigChan
-		logger.Printf("Received signal: %v, shutting down gracefully...", sig)
-		cancel()
+		if err := run(ctx, *configPath, logger); err != nil {
+			logger.Printf("Agent stopped with error: %v", err)
+			systray.Quit()
+		}
 	}()
 
-	// Run the agent
-	if err := run(ctx, *configPath, logger); err != nil {
-		logger.Fatalf("Agent failed: %v", err)
-	}
+	// Signal handling
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+		sig := <-sigChan
+		logger.Printf("Received signal: %v, shutting down...", sig)
+		cancel()
+		systray.Quit()
+	}()
 
-	logger.Println("Agent stopped")
+	systray.Run(onReady, func() {
+		logger.Println("Systray exiting")
+		cancel()
+	})
 }
 
 func run(ctx context.Context, configPath string, logger *log.Logger) error {
@@ -198,3 +205,45 @@ func getDefaultConfigPath() string {
 		return "/etc/unitechio/agent/config.json"
 	}
 }
+
+func onReady() {
+	systray.SetTitle("My Agent")
+	systray.SetTooltip("My Agent is running")
+
+	mOpen := systray.AddMenuItem("Open Dashboard", "Open web UI")
+	mQuit := systray.AddMenuItem("Quit", "Exit app")
+
+	go func() {
+		for {
+			select {
+			case <-mOpen.ClickedCh:
+				openBrowser("http://localhost:8080")
+			case <-mQuit.ClickedCh:
+				systray.Quit()
+				return
+			}
+		}
+	}()
+}
+
+func openBrowser(url string) {
+	var cmd string
+	var args []string
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd = "rundll32"
+		args = []string{"url.dll,FileProtocolHandler", url}
+	case "darwin":
+		cmd = "open"
+		args = []string{url}
+	case "linux":
+		cmd = "xdg-open"
+		args = []string{url}
+	default:
+		return
+	}
+
+	_ = exec.Command(cmd, args...).Start()
+}
+func onExit() {}

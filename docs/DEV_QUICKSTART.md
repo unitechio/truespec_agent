@@ -16,7 +16,7 @@ Failed to load configuration: invalid configuration: org_id is required
 ```bash
 # Set credentials
 export ORG_ID="test-org"
-export INSTALL_TOKEN="test-token"
+export INSTALL_TOKEN="test-token-123"
 
 # Run agent
 cd cmd/agent
